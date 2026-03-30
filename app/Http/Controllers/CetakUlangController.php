@@ -75,7 +75,7 @@ class CetakUlangController extends Controller
         return datatables()->of($this->cetakUlang->datatable($request))
             ->addIndexColumn()
             ->editColumn('st_claim', function ($row) {
-                return '<span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">'.$row->st_claim.'</span>';
+                return '<span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">' . $row->st_claim . '</span>';
             })
             ->editColumn('birth_date', function ($row) {
                 return $row->birth_date ? \Carbon\Carbon::parse($row->birth_date)->format('Y-m-d') : '-';
@@ -84,7 +84,7 @@ class CetakUlangController extends Controller
                 return $row->createddate ? \Carbon\Carbon::parse($row->createddate)->format('Y-m-d') : '-';
             })
             ->editColumn('ttl_paid', function ($row) {
-                return 'Rp '.number_format($row->ttl_paid, 0, ',', '.');
+                return 'Rp ' . number_format($row->ttl_paid, 0, ',', '.');
             })
             ->rawColumns(['st_claim', 'nm_plan', 'st_rujuk'])
             ->make(true);
