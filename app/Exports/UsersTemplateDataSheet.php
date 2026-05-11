@@ -4,23 +4,24 @@ namespace App\Exports;
 
 use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithTitle;
 
-class UserTemplateExport implements FromArray, WithHeadings, WithTitle
+class UsersTemplateDataSheet implements FromArray, WithHeadings, ShouldAutoSize, WithTitle
 {
     public function array(): array
     {
-        // Contoh data baris pertama agar user tahu format isiannya
+        // Contoh data dummy untuk panduan user
         return [
             [
-                'PRV001',
-                'Budi Santoso',
-                'budi_admin',
-                'budi@example.com',
-                'admin',
+                'NST-001',
+                'M WAHYU ADI NUGROHO',
+                'wahyuadin',
+                'wahyuadin@nayakaerahusada.com',
+                'provider',
                 '1',
-                'password123',
-            ],
+                'Nayaka@2026',
+            ]
         ];
     }
 
@@ -39,6 +40,6 @@ class UserTemplateExport implements FromArray, WithHeadings, WithTitle
 
     public function title(): string
     {
-        return 'Template Import User';
+        return 'DATA';
     }
 }

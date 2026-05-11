@@ -12,7 +12,7 @@ use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill; // 🔥 Ditambahkan untuk rata kanan teks Total
+use PhpOffice\PhpSpreadsheet\Style\Fill;
 
 class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEvents, WithHeadings, WithMapping
 {
@@ -49,8 +49,8 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
         }
 
         $query->whereBetween('c.createddate', [
-            $this->dari.' 00:00:00',
-            $this->sampai.' 23:59:59',
+            $this->dari . ' 00:00:00',
+            $this->sampai . ' 23:59:59',
         ]);
         $query->where('c.st_claim', '200');
 
@@ -136,8 +136,8 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                 $sheet->insertNewRowBefore(1, 4);
 
                 $sheet->setCellValue('A1', 'REPORT N-POINT');
-                $sheet->setCellValue('A2', 'Nama Provider : '.$this->providerName);
-                $sheet->setCellValue('A3', 'Range : '.$this->dari.' - '.$this->sampai);
+                $sheet->setCellValue('A2', 'Nama Provider : ' . $this->providerName);
+                $sheet->setCellValue('A3', 'Periode : ' . $this->dari . ' s/d ' . $this->sampai);
 
                 $sheet->mergeCells('A1:K1');
                 $sheet->mergeCells('A2:K2');
@@ -162,13 +162,13 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                     $totalRow = $highestRow + 1;
 
                     // Set teks label dan formula SUM untuk kolom J (Total Biaya)
-                    $sheet->setCellValue('I'.$totalRow, 'GRAND TOTAL');
-                    $sheet->setCellValue('J'.$totalRow, '=SUM(J6:J'.$highestRow.')');
+                    $sheet->setCellValue('I' . $totalRow, 'GRAND TOTAL');
+                    $sheet->setCellValue('J' . $totalRow, '=SUM(J6:J' . $highestRow . ')');
 
                     // Style untuk baris Grand Total
-                    $sheet->getStyle('A'.$totalRow.':K'.$totalRow)->getFont()->setBold(true);
-                    $sheet->getStyle('I'.$totalRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                    $sheet->getStyle('J'.$totalRow)->getNumberFormat()->setFormatCode('#,##0');
+                    $sheet->getStyle('A' . $totalRow . ':K' . $totalRow)->getFont()->setBold(true);
+                    $sheet->getStyle('I' . $totalRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                    $sheet->getStyle('J' . $totalRow)->getNumberFormat()->setFormatCode('#,##0');
 
                     // Perbarui highest row untuk border agar mencakup baris Grand Total
                     $borderEndRow = $totalRow;
@@ -177,7 +177,7 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                 }
 
                 // Terapkan border sampai baris terakhir (termasuk baris Total jika ada)
-                $sheet->getStyle('A5:K'.$borderEndRow)->applyFromArray([
+                $sheet->getStyle('A5:K' . $borderEndRow)->applyFromArray([
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
@@ -194,7 +194,7 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
 
                 // Pastikan auto-filter HANYA sampai baris data ($highestRow),
                 // agar baris Grand Total tidak ada tombol filternya dan tidak ikut difilter
-                $sheet->setAutoFilter('A5:K'.$highestRow);
+                $sheet->setAutoFilter('A5:K' . $highestRow);
             },
         ];
     }

@@ -19,8 +19,8 @@
         </a>
 
         @if(Auth::user()->role == 'admin')
-        <a href="{{ route('users.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
-        {{ Route::is('users.index') ? 'bg-brand-secondary text-white shadow-md' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
+        <a href="{{ route('user.index') }}" class="flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-lg transition-colors
+        {{ Route::is('user.index') ? 'bg-brand-secondary text-white shadow-md' : 'text-gray-400 hover:bg-gray-800 hover:text-white' }}">
             <i class="fa-solid fa-user w-5"></i>
             DATA USER
         </a>

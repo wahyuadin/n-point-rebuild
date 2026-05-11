@@ -2,20 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Exports\UserTemplateExport;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
-use Maatwebsite\Excel\Facades\Excel;
 use Yajra\DataTables\Facades\DataTables;
+use App\Exports\UsersExport;
+use App\Exports\UsersTemplateExport;
+use App\Imports\UsersImport;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Facades\Excel;
+use Maatwebsite\Excel\HeadingRowImport;
 
 class UserController extends Controller
 {
     public function index()
     {
         if (request()->ajax()) {
-            $data = User::query();
+            $data = User::query()
+                ->select('users.*', 'tbl_provider.provider_name')
+                ->join('tbl_provider', 'users.provider_code', '=', 'tbl_provider.provider_code');
 
             return DataTables::of($data)
                 ->addIndexColumn()
@@ -24,10 +31,10 @@ class UserController extends Controller
                     $dataJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
 
                     $btn = '<div class="flex justify-end gap-1">';
-                    $btn .= '<button type="button" onclick="openModal(\'edit\', '.$dataJson.')" class="w-8 h-8 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center">
+                    $btn .= '<button type="button" onclick="openModal(\'edit\', ' . $dataJson . ')" class="w-8 h-8 rounded-full text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors flex items-center justify-center">
                             <i class="fa-solid fa-pen text-[13px]"></i>
                          </button>';
-                    $btn .= '<button type="button" onclick="deleteData(\''.$row->id.'\')" class="w-8 h-8 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center">
+                    $btn .= '<button type="button" onclick="deleteData(\'' . $row->id . '\')" class="w-8 h-8 rounded-full text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center">
                             <i class="fa-solid fa-trash text-[13px]"></i>
                          </button>';
                     $btn .= '</div>';
@@ -98,8 +105,69 @@ class UserController extends Controller
         return response()->json(['message' => 'User berhasil dihapus!']);
     }
 
-    public function downloadTemplate()
+    public function export(Request $request)
     {
-        return Excel::download(new UserTemplateExport, 'template_users.xlsx');
+        $columns = $request->input('columns');
+        if (empty($columns)) {
+            $columns = ['provider_code', 'nama', 'username', 'email', 'role', 'is_active'];
+        }
+        $fileName = 'Data_User_' . date('Ymd_His') . '.xlsx';
+        return Excel::download(new UsersExport($columns), $fileName);
+    }
+
+    public function template()
+    {
+        $fileName = 'Template_Import_User.xlsx';
+        return Excel::download(new UsersTemplateExport, $fileName);
+    }
+
+    public function importPreview(Request $request)
+    {
+        $request->validate(['file' => 'required|mimes:xlsx,xls,csv']);
+
+        $file = $request->file('file');
+        $path = $file->store('temp');
+        $headings = (new HeadingRowImport())->toArray($path);
+
+        return response()->json([
+            'headings' => $headings[0][0],
+            'file_path' => $path
+        ]);
+    }
+
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file_path' => 'required',
+            'mapping'   => 'required|array',
+            'mapping.nama'     => 'required',
+            'mapping.username' => 'required',
+        ], [
+            'mapping.nama.required'     => 'Anda harus memilih pasangan kolom untuk "Nama Lengkap"!',
+            'mapping.username.required' => 'Anda harus memilih pasangan kolom untuk "Username"!',
+        ]);
+
+        try {
+            Excel::import(new UsersImport($request->mapping), storage_path('app/' . $request->file_path));
+            Storage::delete($request->file_path);
+
+            return response()->json(['message' => 'Data berhasil diimport!']);
+        } catch (\Exception $e) {
+            return response()->json(['message' => 'Gagal import: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function searchProviders(Request $request)
+    {
+        $search = $request->input('q');
+
+        $query = DB::table('tbl_provider')
+            ->select('provider_code as id', DB::raw("CONCAT(provider_code, ' - ', provider_name) as text"));
+        if ($search) {
+            $query->where('provider_name', 'LIKE', "%{$search}%")
+                ->orWhere('provider_code', 'LIKE', "%{$search}%");
+        }
+        $providers = $query->limit(20)->get();
+        return response()->json(['results' => $providers]);
     }
 }
