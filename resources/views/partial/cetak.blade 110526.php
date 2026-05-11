@@ -10,6 +10,9 @@
             <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
                 REPORT N-POINT
             </h1>
+            {{-- <h1 class="text-2xl font-bold text-gray-800 tracking-tight">
+                CETAK ULANG STRUK
+            </h1> --}}
             <p class="text-gray-500 text-sm mt-1">
                 Kelola, cetak ulang, atau unduh laporan transaksi pasien.
             </p>
@@ -60,6 +63,50 @@
                 </thead>
 
                 <tbody class="divide-y">
+                    {{-- @foreach ($cetak_ulang as $index => $cetak_ulangItem)
+
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-3 text-center font-medium">{{ $index + 1 }}</td>
+                    <td class="px-6 py-3 font-medium text-gray-800">{{ $cetak_ulangItem->claim_no ?? '-' }}</td>
+
+                    <td class="px-6 py-3">
+                        <span class="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded border border-blue-200">
+                            {{ $cetak_ulangItem->st_claim ?? '-' }}
+                        </span>
+                    </td>
+
+                    <td class="px-6 py-3">
+                        <span class="text-xs bg-green-50 text-green-700 px-2 py-1 rounded border border-green-200 whitespace-nowrap overflow-hidden text-ellipsis inline-block">
+                            {{ $cetak_ulangItem->nm_plan ?? '-' }}
+                        </span>
+                    </td>
+
+                    <td class="px-6 py-3">
+                        <span class="text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-200">
+                            {{ $cetak_ulangItem->st_rujuk ?? '-' }}
+                        </span>
+                    </td>
+
+                    <td class="px-6 py-3 font-medium text-gray-800">{{ $cetak_ulangItem->member_name ?? '-' }}</td>
+
+                    <td class="px-6 py-3 whitespace-nowrap">
+                        {{ \Carbon\Carbon::parse($cetak_ulangItem->birth_date)->format('Y-m-d') }}
+                    </td>
+
+                    <td class="px-6 py-3">{{ $cetak_ulangItem->nm_cus ?? '-' }}</td>
+                    <td class="px-6 py-3 whitespace-nowrap">{{ $cetak_ulangItem->member_no ?? '-' }}</td>
+
+                    <td class="px-6 py-3 text-right">
+                        <span class="text-gray-800 px-2 py-1 rounded font-bold whitespace-nowrap">
+                            Rp {{ number_format($cetak_ulangItem->ttl_paid ?? 0, 0, ',', '.') }}
+                        </span>
+                    </td>
+
+                    <td class="px-6 py-3 whitespace-nowrap">
+                        {{ \Carbon\Carbon::parse($cetak_ulangItem->createddate)->format('Y-m-d') }}
+                    </td>
+                    </tr>
+                    @endforeach --}}
                 </tbody>
             </table>
         </div>
@@ -67,9 +114,11 @@
 
 
     @push('style')
+    <!-- DataTables Styles -->
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.7/css/dataTables.dataTables.min.css">
     <style>
         @media print {
+
             .no-print,
             .no-export-col,
             header,
@@ -89,12 +138,14 @@
                 padding: 8px !important;
             }
         }
+
     </style>
     @endpush
-
     @push('script')
+    <!-- jQuery WAJIB PALING ATAS -->
     <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
 
+    <!-- DataTables jQuery -->
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
     @endpush
@@ -102,75 +153,86 @@
     @push('script')
     <script>
         let table = $('#table-laporan').DataTable({
-            processing: true,
-            serverSide: true,
-            ajax: {
-                url: "{{ route('dashboard.datatable') }}",
-                data: function(d) {
+            processing: true
+            , serverSide: true
+            , ajax: {
+                // url: "https://api.sandbox-wahyuadinugroho.online/cetak-ulang"
+                url: "{{ route('dashboard.datatable') }}"
+                , data: function(d) {
                     d.dari = $('input[name=dari]').val();
                     d.sampai = $('input[name=sampai]').val();
                 }
-            },
-            columns: [
-                { data: 'DT_RowIndex', name: '', className: 'text-center', orderable: false, searchable: false },
-                { data: 'claim_no', name: 'c.claim_no' },
-                { data: 'st_claim', name: 'c.st_claim' },
-                { data: 'nm_plan', name: 'p.nm_plan' },
-                { data: 'st_rujuk', name: 'c.st_rujuk' },
-                { data: 'member_name', name: 'm.member_name' },
-                { data: 'birth_date', name: 'm.birth_date' },
-                { data: 'nm_cus', name: 'cust.nm_cus' },
-                { data: 'member_no', name: 'm.member_no' },
-                { data: 'ttl_paid', name: 'cd.ttl_paid', className: 'text-right' },
-                { data: 'createddate', name: 'c.createddate', className: 'text-right' },
-            ],
-            responsive: true,
-            paging: true,
-            searching: true,
-            ordering: true,
-            lengthMenu: [
-                [10, 25, 50, 100],
+            }
+            , columns: [{
+                    data: 'DT_RowIndex'
+                    , name: ''
+                    , className: 'text-center'
+                    , orderable: false
+                    , searchable: false
+                }
+                , {
+                    data: 'claim_no'
+                    , name: 'c.claim_no'
+                }
+                , {
+                    data: 'st_claim'
+                    , name: 'c.st_claim'
+                }
+                , {
+                    data: 'nm_plan'
+                    , name: 'p.nm_plan'
+                }
+                , {
+                    data: 'st_rujuk'
+                    , name: 'c.st_rujuk'
+                }
+                , {
+                    data: 'member_name'
+                    , name: 'm.member_name'
+                }
+                , {
+                    data: 'birth_date'
+                    , name: 'm.birth_date'
+                }
+                , {
+                    data: 'nm_cus'
+                    , name: 'cust.nm_cus'
+                }
+                , {
+                    data: 'member_no'
+                    , name: 'm.member_no'
+                }
+                , {
+                    data: 'ttl_paid'
+                    , name: 'cd.ttl_paid'
+                    , className: 'text-right'
+                }
+                , {
+                    data: 'createddate'
+                    , name: 'c.createddate'
+                    , className: 'text-right'
+                }
+            , ]
+            , responsive: true
+            , paging: true
+            , searching: true
+            , ordering: true
+            , lengthMenu: [
                 [10, 25, 50, 100]
-            ],
-            language: {
-                search: "Cari:",
-                lengthMenu: "Tampilkan _MENU_ data"
+                , [10, 25, 50, 100]
+            ]
+            , language: {
+                search: "Cari:"
+                , lengthMenu: "Tampilkan _MENU_ data"
             }
         });
 
-        function showError(message) {
-                Toastify({
-                    text: message,
-                    duration: 1500,
-                    close: true,
-                    gravity: "top",
-                    position: "right",
-                    stopOnFocus: true,
-                    style: {
-                        color: "#fff",
-                        background: "#d63939",
-                        borderRadius: "0.5rem",
-                        boxShadow: "0 0 10px rgba(214, 57, 57, 0.5)",
-                    },
-                }).showToast();
-            }
-
-            function showSuccess(message) {
-                Toastify({
-                    text : message,
-                    duration: 2000,
-                    close: true,
-                    gravity: "top",
-                    position: "right",
-                    stopOnFocus: true,
-                    style: {
-                        color: "#fff",
-                        background: "linear-gradient(to right, #00b09b, #96c93d)",
-                        borderRadius: "0.5rem",
-                    },
-
-                }).showToast();
-            }
+        function diffDays(start, end) {
+            const from = new Date(start);
+            const to = new Date(end);
+            const diffTime = to - from;
+            return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        }
 
         $('#filterForm').on('submit', function(e) {
             e.preventDefault();
@@ -189,12 +251,45 @@
             dari.setHours(0, 0, 0, 0);
             sampai.setHours(0, 0, 0, 0);
 
+            function showError(message) {
+                Toastify({
+                    text: message,
+                    duration: 1500,
+                    close: true,
+                    gravity: "top",
+                    position: "right",
+                    stopOnFocus: true,
+                    style: {
+                        color: "#fff",
+                        background: "#d63939",
+                        borderRadius: "0.5rem",
+                        boxShadow: "0 0 10px rgba(214, 57, 57, 0.5)",
+                    },
+                }).showToast();
+            }
+
+            function formatDateLocal(date) {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            }
             if (sampai < dari) {
                 showError('Tanggal akhir tidak boleh lebih kecil dari tanggal awal.');
                 return;
             }
 
+            // validasi maksimal 60 hari
             const selisihHari = (sampai - dari) / (1000 * 60 * 60 * 24);
+
+            const tanggalMinSelisih = new Date(sampai);
+            tanggalMinSelisih.setDate(tanggalMinSelisih.getDate() - 61);
+            console.log({
+                dari: formatDateLocal(dari),
+                sampai: formatDateLocal(sampai),
+                selisihHari: selisihHari,
+                tanggal_min_selisih: formatDateLocal(tanggalMinSelisih)
+            });
 
             if (selisihHari > 61) {
                 showError('Rentang tanggal maksimal 60 hari.');
@@ -215,49 +310,11 @@
                 url += `?dari=${dari}&sampai=${sampai}`;
             }
 
-            const loader = $('#loading-overlay');
-            loader.removeClass('hidden');
-            fetch(url, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Terjadi kesalahan saat mengunduh file.');
-                }
-                return response.blob();
-            })
-            .then(blob => {
-                const downloadUrl = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = downloadUrl;
-
-                a.download = `Laporan_Klaim_${dari}_sampai_${sampai}.xlsx`;
-
-                document.body.appendChild(a);
-                a.click();
-
-                window.URL.revokeObjectURL(downloadUrl);
-                document.body.removeChild(a);
-                Toastify({
-                    text: "Gagal mengunduh Excel. Silahkan coba lagi.",
-                })
-
-            })
-            .catch(error => {
-                Toastify({
-                    text: "Gagal mengunduh Excel. Silahkan coba lagi.",
-                });
-                console.log(error)
-            })
-            .finally(() => {
-                loader.addClass('hidden');
-                showSuccess("Unduhan Berhasil..");
-            });
+            window.open(url, '_blank');
         }
+
     </script>
     @endpush
+
+
 </div>

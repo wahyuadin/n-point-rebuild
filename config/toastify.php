@@ -34,7 +34,6 @@ return [
             'close' => true,
         ],
         'success' => [
-            'close' => false,
             'stopOnFocus' => true,
             'duration' => 2000,
             'style' => [
@@ -68,7 +67,6 @@ return [
             ],
         ],
     ],
-
 
     /*
     |--------------------------------------------------------------------------

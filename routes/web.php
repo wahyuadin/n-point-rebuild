@@ -14,7 +14,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/', [Controller::class, 'index'])->name('dashboard');
     Route::get('cetak-ulang', [CetakUlangController::class, 'datatable'])->name('dashboard.datatable');
     Route::resource('change-password', GantiPasswordController::class);
+    Route::get('/export-laporan', [Controller::class, 'exportExcel'])->name('dashboard.export');
 });
 Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('users/template/download', [UserController::class, 'downloadTemplate'])->name('users.template');
     Route::resource('users', UserController::class);
 });

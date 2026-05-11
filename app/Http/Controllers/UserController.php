@@ -2,10 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\UserTemplateExport;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
+use Maatwebsite\Excel\Facades\Excel;
 use Yajra\DataTables\Facades\DataTables;
 
 class UserController extends Controller
@@ -13,12 +15,10 @@ class UserController extends Controller
     public function index()
     {
         if (request()->ajax()) {
-            // PERBAIKAN: Gunakan query() tanpa ->latest() untuk menghindari error SQL Server
             $data = User::query();
 
             return DataTables::of($data)
                 ->addIndexColumn()
-                // Opsional: Jika ingin default sorting tetap yang terbaru (created_at DESC) via Yajra
                 ->orderColumn('created_at', '-created_at $1')
                 ->addColumn('action', function ($row) {
                     $dataJson = htmlspecialchars(json_encode($row), ENT_QUOTES, 'UTF-8');
@@ -96,5 +96,10 @@ class UserController extends Controller
         User::findOrFail($id)->delete();
 
         return response()->json(['message' => 'User berhasil dihapus!']);
+    }
+
+    public function downloadTemplate()
+    {
+        return Excel::download(new UserTemplateExport, 'template_users.xlsx');
     }
 }

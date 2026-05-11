@@ -18,7 +18,7 @@
 
         @include('partial.rencanakunjungan')
 
-        @include('partial.cetak')
+        @include('partial.cetak') {{-- report n-point --}}
 
         @include('partial.skpj')
     </main>

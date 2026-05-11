@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Exports\LaporanKlaimExport;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Maatwebsite\Excel\Facades\Excel;
 
 class CetakulangService
 {
@@ -15,10 +17,12 @@ class CetakulangService
 
             DB::commit();
             toastify()->success('Data Berhasil Ditambahkan.');
+
             return redirect()->back();
         } catch (\Throwable $th) {
             DB::rollback(); // Rollback HARUS sebelum return
-            toastify()->error('Error: ' . $th->getMessage());
+            toastify()->error('Error: '.$th->getMessage());
+
             return redirect()->back();
         }
     }
@@ -31,10 +35,12 @@ class CetakulangService
 
             DB::commit();
             toastify()->success('Data Berhasil diedit.');
+
             return redirect()->back();
         } catch (\Throwable $th) {
             DB::rollback();
-            toastify()->error('Error: ' . $th->getMessage());
+            toastify()->error('Error: '.$th->getMessage());
+
             return redirect()->back();
         }
     }
@@ -47,10 +53,12 @@ class CetakulangService
 
             DB::commit();
             toastify()->success('Data Berhasil Dihapus.');
+
             return redirect()->back();
         } catch (\Throwable $th) {
             DB::rollback();
-            toastify()->error('Error: ' . $th->getMessage());
+            toastify()->error('Error: '.$th->getMessage());
+
             return redirect()->back();
         }
     }
@@ -69,10 +77,11 @@ class CetakulangService
 
         if ($request->dari && $request->sampai) {
             $query->whereBetween('c.createddate', [
-                $request->dari . ' 00:00:00',
-                $request->sampai . ' 23:59:59'
+                $request->dari.' 00:00:00',
+                $request->sampai.' 23:59:59',
             ]);
         }
+        $query->where('c.st_claim', '200');
 
         return $query->select(
             'c.claim_no',
@@ -99,5 +108,20 @@ class CetakulangService
                 'm.birth_date',
                 'm.member_name'
             );
+    }
+
+    public function exportExcel($request)
+    {
+        $provider = DB::table('tbl_provider');
+        if (Auth::user()->role !== 'admin') {
+            $provider->where('provider_code', Auth::user()->provider_code);
+        }
+
+        $providerName = $provider->value('provider_name');
+
+        return Excel::download(
+            new LaporanKlaimExport($request->dari, $request->sampai),
+            'Laporan_Klaim_'.$providerName.'_'.$request->dari.'_'.$request->sampai.'.xlsx'
+        );
     }
 }

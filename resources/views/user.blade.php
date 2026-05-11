@@ -139,8 +139,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
 
                     <div class="space-y-1.5">
+                        @php
+                            $provider = \DB::table('users');
+                        @endphp
                         <label class="block text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Provider Code</label>
                         <input type="text" name="provider_code" id="provider_code" required class="block w-full px-4 py-2.5 text-sm text-gray-900 bg-gray-50/50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900/10 focus:border-gray-400 focus:bg-white outline-none transition-all">
+
                     </div>
 
                     <div class="space-y-1.5">
