@@ -22,7 +22,7 @@ class UserController extends Controller
         if (request()->ajax()) {
             $data = User::query()
                 ->select('users.*', 'tbl_provider.provider_name')
-                ->join('tbl_provider', 'users.provider_code', '=', 'tbl_provider.provider_code');
+                ->leftjoin('tbl_provider', 'users.provider_code', '=', 'tbl_provider.provider_code');
 
             return DataTables::of($data)
                 ->addIndexColumn()
