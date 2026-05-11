@@ -33,7 +33,7 @@
             </div>
 
             <div class="md:col-span-4 flex gap-2 justify-end">
-                <button type="button" onclick="exportExcel()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-3 rounded-md shadow-sm transition-all flex items-center gap-2">
+                <button type="button" onclick="openExportModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2 px-3 rounded-md shadow-sm transition-all flex items-center gap-2">
                     <i class="fa-solid fa-file-excel text-xs"></i> Export Excel
                 </button>
             </div>
@@ -62,6 +62,56 @@
                 <tbody class="divide-y">
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- Modal Export Excel -->
+    <div id="export-laporan-modal" class="fixed inset-0 z-[100] hidden bg-slate-900/40 backdrop-blur-sm flex justify-center items-center overflow-y-auto p-4 transition-opacity duration-300 opacity-0">
+        <div id="export-modal-card" class="bg-white rounded-2xl shadow-xl w-full max-w-md transform transition-all duration-300 ease-out scale-95 translate-y-4 opacity-0 border border-gray-100">
+
+            <div class="p-5 flex justify-between items-center border-b border-gray-50">
+                <h3 class="text-lg font-bold text-gray-900 tracking-tight">Export Laporan Klaim</h3>
+                <button onclick="closeExportModal()" class="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <div class="p-5">
+                <form id="form-export-excel" onsubmit="handleExportExcel(event)">
+                    <p class="text-[13px] text-gray-500 mb-4">Pilih kolom yang ingin disertakan dalam file Excel:</p>
+
+                    <div class="space-y-3 mb-6 bg-gray-50/50 p-4 rounded-xl border border-gray-100 max-h-60 overflow-y-auto custom-scroll">
+                        @php
+                            $columns = [
+                                'claim_no' => 'No Klaim',
+                                'st_claim' => 'Status',
+                                'nm_plan' => 'Manfaat',
+                                'st_rujuk' => 'Rujukan',
+                                'member_name' => 'Nama Peserta',
+                                'birth_date' => 'Tanggal Lahir',
+                                'nm_cus' => 'Nama Perusahaan',
+                                'member_no' => 'No Kartu',
+                                'ttl_paid' => 'Total Biaya',
+                                'createddate' => 'Tanggal Kunjungan'
+                            ];
+                        @endphp
+
+                        @foreach($columns as $key => $label)
+                        <label class="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" name="columns[]" value="{{ $key }}" checked class="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500">
+                            <span class="text-sm text-gray-700 font-medium">{{ $label }}</span>
+                        </label>
+                        @endforeach
+                    </div>
+
+                    <div class="flex gap-3 justify-end">
+                        <button type="button" onclick="closeExportModal()" class="px-5 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">Batal</button>
+                        <button type="submit" id="btn-submit-export" class="bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium py-2.5 px-5 rounded-xl shadow-sm transition-all flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> Download
+                        </button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -210,7 +260,6 @@
 
             let url = "{{ route('dashboard.export') }}";
 
-            // kalau ada filter
             if (dari && sampai) {
                 url += `?dari=${dari}&sampai=${sampai}`;
             }
@@ -258,6 +307,95 @@
                 showSuccess("Unduhan Berhasil..");
             });
         }
+
+        function openExportModal() {
+            const modal = document.getElementById('export-laporan-modal');
+            const card = document.getElementById('export-modal-card');
+
+            modal.classList.remove('hidden');
+            requestAnimationFrame(() => {
+                modal.classList.remove('opacity-0');
+                modal.classList.add('opacity-100');
+                card.classList.remove('scale-95', 'translate-y-4', 'opacity-0');
+                card.classList.add('scale-100', 'translate-y-0', 'opacity-100');
+            });
+        }
+
+        function closeExportModal() {
+            const modal = document.getElementById('export-laporan-modal');
+            const card = document.getElementById('export-modal-card');
+
+            modal.classList.remove('opacity-100');
+            modal.classList.add('opacity-0');
+            card.classList.remove('scale-100', 'translate-y-0', 'opacity-100');
+            card.classList.add('scale-95', 'translate-y-4', 'opacity-0');
+
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function handleExportExcel(e) {
+            e.preventDefault();
+
+            const dari = $('input[name=dari]').val();
+            const sampai = $('input[name=sampai]').val();
+
+            const checkedColumns = [];
+            $('input[name="columns[]"]:checked').each(function() {
+                checkedColumns.push($(this).val());
+            });
+
+            if (checkedColumns.length === 0) {
+                showError('Pilih minimal 1 kolom untuk diekspor.');
+                return;
+            }
+
+            closeExportModal();
+            const loader = $('#loading-overlay');
+            loader.removeClass('hidden');
+
+            let url = "{{ route('dashboard.export') }}";
+            let params = new URLSearchParams();
+
+            if (dari) params.append('dari', dari);
+            if (sampai) params.append('sampai', sampai);
+
+            checkedColumns.forEach(col => params.append('columns[]', col));
+
+            url += '?' + params.toString();
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Terjadi kesalahan saat mengunduh file.');
+                }
+                return response.blob();
+            })
+            .then(blob => {
+                const downloadUrl = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = downloadUrl;
+                a.download = `Laporan_Klaim_${dari}_sampai_${sampai}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(downloadUrl);
+                document.body.removeChild(a);
+                showSuccess("Unduhan Berhasil..");
+            })
+            .catch(error => {
+                showError("Gagal mengunduh Excel. Silahkan coba lagi.");
+                console.log(error);
+            })
+    .finally(() => {
+        loader.addClass('hidden');
+    });
+}
     </script>
     @endpush
 </div>

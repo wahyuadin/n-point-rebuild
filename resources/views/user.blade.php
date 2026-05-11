@@ -366,6 +366,33 @@
     </div>
 </div>
 
+<div id="delete-modal" class="fixed inset-0 z-[100] hidden bg-slate-900/40 backdrop-blur-sm flex justify-center items-center overflow-y-auto p-4 transition-opacity duration-300 opacity-0">
+    <div id="delete-modal-card" class="bg-white rounded-2xl shadow-xl w-full max-w-sm transform transition-all duration-300 ease-out scale-95 translate-y-4 opacity-0 border border-gray-100 text-center p-6 relative overflow-hidden">
+
+        <!-- Aksen warna merah di atas modal (opsional untuk desain yang lebih manis) -->
+        <div class="absolute top-0 left-0 w-full h-1.5 bg-rose-500"></div>
+
+        <!-- Icon Peringatan -->
+        <div class="w-16 h-16 rounded-full bg-rose-50 flex items-center justify-center mx-auto mb-5 mt-2">
+            <i class="fa-solid fa-triangle-exclamation text-3xl text-rose-500"></i>
+        </div>
+
+        <h3 class="text-xl font-bold text-gray-900 mb-2 tracking-tight">Hapus Data?</h3>
+        <p class="text-[13px] text-gray-500 mb-7 leading-relaxed">
+            Apakah Anda yakin ingin menghapus user ini secara permanen? Data yang sudah dihapus tidak dapat dikembalikan.
+        </p>
+
+        <div class="flex gap-3 justify-center">
+            <button type="button" onclick="closeDeleteModal()" class="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 rounded-xl transition-colors">
+                Batal
+            </button>
+            <button type="button" id="btn-confirm-delete" class="flex-1 bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium py-2.5 px-4 rounded-xl shadow-sm transition-all flex items-center justify-center gap-2">
+                <i class="fa-solid fa-trash"></i> Ya, Hapus
+            </button>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @push('script')
@@ -551,23 +578,77 @@
         return false;
     }
 
-    function deleteData(id) {
-        if(confirm('Hapus user ini secara permanen?')) {
-            fetch(`/users/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(async res => {
-                if (!res.ok) throw await res.json();
-                showSuccess('Data dihapus');
-                table.ajax.reload(null, false);
-            })
-            .catch(err => showError(err.message || 'Gagal menghapus'));
+    let deleteTargetId = null;
+
+// Fungsi untuk membuka modal saat tombol tong sampah di klik
+function deleteData(id) {
+    deleteTargetId = id; // Simpan ID ke variabel global
+
+    const modal = document.getElementById('delete-modal');
+    const card = document.getElementById('delete-modal-card');
+
+    modal.classList.remove('hidden');
+    requestAnimationFrame(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+        card.classList.remove('scale-95', 'translate-y-4', 'opacity-0');
+        card.classList.add('scale-100', 'translate-y-0', 'opacity-100');
+    });
+}
+
+// Fungsi untuk menutup modal konfirmasi
+function closeDeleteModal() {
+    const modal = document.getElementById('delete-modal');
+    const card = document.getElementById('delete-modal-card');
+
+    modal.classList.remove('opacity-100');
+    modal.classList.add('opacity-0');
+    card.classList.remove('scale-100', 'translate-y-0', 'opacity-100');
+    card.classList.add('scale-95', 'translate-y-4', 'opacity-0');
+
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        deleteTargetId = null; // Reset ID
+    }, 300);
+}
+
+// Event listener untuk tombol "Ya, Hapus" di dalam modal
+document.getElementById('btn-confirm-delete').addEventListener('click', function() {
+    if (!deleteTargetId) return;
+
+    const btn = this;
+    const originalContent = btn.innerHTML;
+
+    // Ubah state tombol menjadi loading
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+    btn.disabled = true;
+    btn.classList.add('opacity-80', 'cursor-not-allowed');
+
+    // Pastikan URL menyesuaikan (pada kode sebelumnya Anda memakai /user atau /users)
+    fetch(`/user/${deleteTargetId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+            'Content-Type': 'application/json'
         }
-    }
+    })
+    .then(async res => {
+        if (!res.ok) throw await res.json();
+        showSuccess('Data berhasil dihapus');
+        table.ajax.reload(null, false);
+        closeDeleteModal(); // Tutup modal jika sukses
+    })
+    .catch(err => {
+        showError(err.message || 'Gagal menghapus data');
+        closeDeleteModal(); // Tetap tutup modal agar user bisa mencoba lagi
+    })
+    .finally(() => {
+        // Kembalikan state tombol ke semula
+        btn.innerHTML = originalContent;
+        btn.disabled = false;
+        btn.classList.remove('opacity-80', 'cursor-not-allowed');
+    });
+});
 
     function openImportModal() {
         const modal = document.getElementById('import-modal');

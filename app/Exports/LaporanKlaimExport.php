@@ -5,28 +5,39 @@ namespace App\Exports;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
-use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithEvents; // Hapus WithColumnFormatting
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Events\AfterSheet;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Style\NumberFormat; // WAJIB DI-IMPORT
 
-class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEvents, WithHeadings, WithMapping
+class LaporanKlaimExport implements FromCollection, WithEvents, WithHeadings, WithMapping
 {
     protected $dari;
-
     protected $sampai;
-
     protected $providerName;
-
     protected $providerCode;
-
+    protected $selectedColumns;
     private $rowNumber = 0;
 
-    public function __construct($dari = null, $sampai = null)
+    protected $masterColumns = [
+        'claim_no'    => 'No Klaim',
+        'st_claim'    => 'Status',
+        'nm_plan'     => 'Manfaat',
+        'st_rujuk'    => 'Rujukan',
+        'member_name' => 'Nama Peserta',
+        'birth_date'  => 'Tanggal Lahir',
+        'nm_cus'      => 'Nama Perusahaan',
+        'member_no'   => 'No Kartu',
+        'ttl_paid'    => 'Total Biaya',
+        'createddate' => 'Tgl Kunjungan',
+    ];
+
+    public function __construct($dari = null, $sampai = null, $selectedColumns = [])
     {
         $this->sampai = $sampai ?? now()->format('Y-m-d');
         $this->dari = $dari ?? now()->subDays(60)->format('Y-m-d');
@@ -34,6 +45,8 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
         $this->providerName = DB::table('tbl_provider')
             ->where('provider_code', $this->providerCode)
             ->value('provider_name');
+
+        $this->selectedColumns = empty($selectedColumns) ? array_keys($this->masterColumns) : $selectedColumns;
     }
 
     public function collection()
@@ -51,8 +64,7 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
         $query->whereBetween('c.createddate', [
             $this->dari . ' 00:00:00',
             $this->sampai . ' 23:59:59',
-        ]);
-        $query->where('c.st_claim', '200');
+        ])->where('c.st_claim', '200');
 
         return $query->select(
             'c.claim_no',
@@ -76,62 +88,52 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                 'cust.nm_cus',
                 'm.member_no',
                 'c.createddate'
-            )
-            ->get();
+            )->get();
     }
 
     public function map($row): array
     {
         $this->rowNumber++;
+        $data = [$this->rowNumber];
 
-        return [
-            $this->rowNumber,
-            $row->claim_no,
-            $row->st_claim,
-            $row->nm_plan,
-            $row->st_rujuk,
-            $row->member_name,
-            $row->birth_date,
-            $row->nm_cus,
-            $row->member_no,
-            $row->ttl_paid,
-            $row->createddate,
-        ];
+        foreach ($this->selectedColumns as $col) {
+            $value = $row->$col;
+
+            // 1. Format Tanggal Lahir menjadi "1996-09-20"
+            if ($col === 'birth_date' && !empty($value)) {
+                $value = date('Y-m-d', strtotime($value));
+            }
+
+            // 2. Ubah tipe data string angka menjadi Number asli di PHP
+            if (in_array($col, ['claim_no', 'st_claim', 'member_no'])) {
+                // Trik `+ 0` akan secara otomatis mengonversi string ke int/float
+                $value = is_numeric($value) ? $value + 0 : $value;
+            }
+
+            $data[] = $value;
+        }
+
+        return $data;
     }
 
     public function headings(): array
     {
-        return [
-            'NO',
-            'No Klaim',
-            'Status',
-            'Manfaat',
-            'Rujukan',
-            'Nama Peserta',
-            'Tanggal Lahir',
-            'Nama Perusahaan',
-            'No Kartu',
-            'Total Biaya',
-            'Tanggal Kunjungan',
-        ];
-    }
-
-    public function columnFormats(): array
-    {
-        return [
-            'B' => '0',
-            'C' => '0',
-            'I' => '0',
-            'J' => '#,##0',
-        ];
+        $headers = ['NO'];
+        foreach ($this->selectedColumns as $col) {
+            $headers[] = $this->masterColumns[$col];
+        }
+        return $headers;
     }
 
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
-
                 $sheet = $event->sheet->getDelegate();
+                $highestRow = $sheet->getHighestRow();
+
+                $totalColumnsCount = count($this->selectedColumns) + 1;
+                $lastColLetter = Coordinate::stringFromColumnIndex($totalColumnsCount);
 
                 $sheet->insertNewRowBefore(1, 4);
 
@@ -139,16 +141,14 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                 $sheet->setCellValue('A2', 'Nama Provider : ' . $this->providerName);
                 $sheet->setCellValue('A3', 'Periode : ' . $this->dari . ' s/d ' . $this->sampai);
 
-                $sheet->mergeCells('A1:K1');
-                $sheet->mergeCells('A2:K2');
-                $sheet->mergeCells('A3:K3');
+                $sheet->mergeCells("A1:{$lastColLetter}1");
+                $sheet->mergeCells("A2:{$lastColLetter}2");
+                $sheet->mergeCells("A3:{$lastColLetter}3");
 
                 $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(14);
                 $sheet->getStyle('A2:A3')->getFont()->setBold(true);
 
-                $highestRow = $sheet->getHighestRow();
-
-                $sheet->getStyle('A5:K5')->applyFromArray([
+                $sheet->getStyle("A5:{$lastColLetter}5")->applyFromArray([
                     'font' => ['bold' => true],
                     'fill' => [
                         'fillType' => Fill::FILL_SOLID,
@@ -156,28 +156,33 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                     ],
                 ]);
 
-                // 🔥 GRAND TOTAL LOGIC
-                // Memastikan ada data sebelum menjumlahkan (baris data dimulai dari row 6)
-                if ($highestRow >= 6) {
+                // Hitung ulang tertinggi setelah insert row
+                $highestRow += 4;
+                $borderEndRow = $highestRow;
+
+                $ttlPaidIndex = array_search('ttl_paid', $this->selectedColumns);
+
+                if ($highestRow >= 6 && $ttlPaidIndex !== false) {
                     $totalRow = $highestRow + 1;
-
-                    // Set teks label dan formula SUM untuk kolom J (Total Biaya)
-                    $sheet->setCellValue('I' . $totalRow, 'GRAND TOTAL');
-                    $sheet->setCellValue('J' . $totalRow, '=SUM(J6:J' . $highestRow . ')');
-
-                    // Style untuk baris Grand Total
-                    $sheet->getStyle('A' . $totalRow . ':K' . $totalRow)->getFont()->setBold(true);
-                    $sheet->getStyle('I' . $totalRow)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                    $sheet->getStyle('J' . $totalRow)->getNumberFormat()->setFormatCode('#,##0');
-
-                    // Perbarui highest row untuk border agar mencakup baris Grand Total
                     $borderEndRow = $totalRow;
-                } else {
-                    $borderEndRow = $highestRow;
+
+                    $ttlPaidColNum = $ttlPaidIndex + 2;
+                    $ttlPaidLetter = Coordinate::stringFromColumnIndex($ttlPaidColNum);
+                    $prevLetter = Coordinate::stringFromColumnIndex($ttlPaidColNum - 1);
+
+                    $sheet->setCellValue("{$prevLetter}{$totalRow}", 'GRAND TOTAL');
+                    $sheet->setCellValue("{$ttlPaidLetter}{$totalRow}", "=SUM({$ttlPaidLetter}6:{$ttlPaidLetter}{$highestRow})");
+
+                    $sheet->getStyle("A{$totalRow}:{$lastColLetter}{$totalRow}")->getFont()->setBold(true);
+                    $sheet->getStyle("{$prevLetter}{$totalRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                    // Format Total Biaya
+                    $sheet->getStyle("{$ttlPaidLetter}6:{$ttlPaidLetter}{$totalRow}")
+                        ->getNumberFormat()
+                        ->setFormatCode('#,##0');
                 }
 
-                // Terapkan border sampai baris terakhir (termasuk baris Total jika ada)
-                $sheet->getStyle('A5:K' . $borderEndRow)->applyFromArray([
+                // Terapkan border
+                $sheet->getStyle("A5:{$lastColLetter}{$borderEndRow}")->applyFromArray([
                     'borders' => [
                         'allBorders' => [
                             'borderStyle' => Border::BORDER_THIN,
@@ -186,15 +191,25 @@ class LaporanKlaimExport implements FromCollection, WithColumnFormatting, WithEv
                     ],
                 ]);
 
-                foreach (range('A', 'K') as $col) {
-                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                // 🔥 FORCE EXCEL FORMAT: Mencegah 'General' dan memastikan Ribbon membaca sebagai 'Number'
+                $colIndex = 2; // Mulai dari kolom B
+                foreach ($this->selectedColumns as $col) {
+                    $letter = Coordinate::stringFromColumnIndex($colIndex);
+
+                    // Terapkan NumberFormat HANYA untuk baris data (6 sampai bawah)
+                    if (in_array($col, ['claim_no', 'st_claim', 'member_no'])) {
+                        $sheet->getStyle("{$letter}6:{$letter}{$highestRow}")
+                            ->getNumberFormat()
+                            ->setFormatCode(NumberFormat::FORMAT_NUMBER); // KODE '0' (Number murni)
+                    }
+
+                    $sheet->getColumnDimension($letter)->setAutoSize(true);
+                    $colIndex++;
                 }
 
+                $sheet->getColumnDimension('A')->setAutoSize(true);
                 $sheet->freezePane('A6');
-
-                // Pastikan auto-filter HANYA sampai baris data ($highestRow),
-                // agar baris Grand Total tidak ada tombol filternya dan tidak ikut difilter
-                $sheet->setAutoFilter('A5:K' . $highestRow);
+                $sheet->setAutoFilter("A5:{$lastColLetter}{$highestRow}");
             },
         ];
     }
